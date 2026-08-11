@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.KingStack" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0B1A15</item>
+        <item name="android:navigationBarColor">#0B1A15</item>
+        <item name="android:windowBackground">#0B1A15</item>
+    </style>
+    <color name="ic_launcher_background">#0E2A20</color>
+</resources>
