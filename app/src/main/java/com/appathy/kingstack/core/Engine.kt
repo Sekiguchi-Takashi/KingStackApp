@@ -107,9 +107,15 @@ object Engine {
         var active = state.activeSlotCount
         val credited = state.creditedKings.toMutableSet()
         for (i in 0 until state.activeSlotCount) {
-            val base = slots[i].firstOrNull() ?: continue
-            if (base.rank == RUN_LENGTH && kingCount < MAX_KING_UNLOCK && !credited.contains(base.id)) {
-                credited.add(base.id)
+            val slot = slots[i]
+            if (slot.isEmpty()) continue
+            // 列の先頭（最下段）または、露出している一番上のカード。
+            // 同じキングは一度しか加算されない。
+            for (king in listOf(slot.first(), slot.last())) {
+                if (king.rank != RUN_LENGTH) continue
+                if (kingCount >= MAX_KING_UNLOCK) break
+                if (credited.contains(king.id)) continue
+                credited.add(king.id)
                 kingCount++
                 active++
                 score += SCORE_KING
@@ -129,7 +135,7 @@ object Engine {
 
         val status = when {
             result.completedCount >= COMPLETE_TARGET -> GameStatus.CLEAR
-            result.drawPile.isEmpty() && Rules.legalMoves(result).isEmpty() -> GameStatus.GAME_OVER
+            result.drawPile.isEmpty() && Rules.productiveMoves(result).isEmpty() -> GameStatus.GAME_OVER
             else -> GameStatus.PLAYING
         }
         return result.copy(status = status)

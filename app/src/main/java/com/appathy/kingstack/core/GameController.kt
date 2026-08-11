@@ -45,12 +45,19 @@ class GameController(
             return Rules.legalTargets(state, sel.first, sel.second)
         }
 
+    /** 前進する手の数。0なら手詰まり扱い。 */
+    val productiveCount: Int
+        get() = Rules.productiveMoves(state).size
+
     val stuck: Boolean
-        get() = Rules.legalMoves(state).isEmpty()
+        get() = productiveCount == 0
+
+    /** ボタンを押せるか。押した結果を説明したいので厳格モードでも押させる。 */
+    val canPressDraw: Boolean
+        get() = state.status == GameStatus.PLAYING && state.drawPile.isNotEmpty()
 
     val canDraw: Boolean
-        get() = state.status == GameStatus.PLAYING && state.drawPile.isNotEmpty() &&
-            (!settings.strictDraw || stuck)
+        get() = canPressDraw && (!settings.strictDraw || stuck)
 
     val canRedraw: Boolean
         get() = state.status == GameStatus.PLAYING && state.redrawAvailable && preDraw != null
@@ -159,7 +166,7 @@ class GameController(
 
     fun drawCards() {
         if (!canDraw) {
-            if (settings.strictDraw) lastMessage = "まだ動かせるカードがあります"
+            if (settings.strictDraw) lastMessage = "まだ前進できる手が" + productiveCount + "つあります"
             return
         }
         val before = state

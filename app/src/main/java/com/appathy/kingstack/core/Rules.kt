@@ -79,6 +79,26 @@ object Rules {
         return result
     }
 
+    /**
+     * その手が盤面を前進させるか。
+     * カードを置けば必ず1つ隣接ができるが、移動元で隣接を1つ壊すなら差し引きゼロ。
+     * 空列への移動は隣接を増やさないので「前進」には数えない。
+     */
+    fun isProductive(state: GameState, move: Move): Boolean {
+        val src = state.slots[move.from]
+        val dest = state.slots[move.to]
+        if (move.fromIndex !in src.indices) return false
+        val gained = if (dest.isEmpty()) 0 else 1
+        val lost = if (move.fromIndex > 0 &&
+            src[move.fromIndex - 1].rank == src[move.fromIndex].rank + 1
+        ) 1 else 0
+        return gained - lost > 0
+    }
+
+    /** 前進する手だけを返す。「手詰まり」はこれが空の状態を指す。 */
+    fun productiveMoves(state: GameState): List<Move> =
+        legalMoves(state).filter { isProductive(state, it) }
+
     /** 列の一番上13枚が K,Q,J,...,A の順で積まれていれば完成。 */
     fun isCompleted(slot: List<Card>): Boolean {
         if (slot.size < RUN_LENGTH) return false

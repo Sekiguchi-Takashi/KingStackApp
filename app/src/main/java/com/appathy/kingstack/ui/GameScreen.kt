@@ -131,12 +131,12 @@ fun GameScreen(
                     fontWeight = FontWeight.Bold
                 )
                 controller.stuck -> Text(
-                    text = "動かせる手がありません",
+                    text = "手詰まりです。カードを配れます",
                     color = Palette.TextDim,
                     fontSize = 12.sp
                 )
                 else -> Text(
-                    text = "移動 ${state.moveCount} / 配札 ${state.drawCount}",
+                    text = "移動 ${state.moveCount} / 配札 ${state.drawCount} / 前進できる手 ${controller.productiveCount}",
                     color = Palette.TextDim,
                     fontSize = 11.sp
                 )
@@ -160,7 +160,7 @@ fun GameScreen(
 
         Button(
             onClick = { controller.drawCards() },
-            enabled = controller.canDraw,
+            enabled = controller.canPressDraw,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(

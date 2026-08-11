@@ -150,10 +150,10 @@ fun RulesScreen(onBack: () -> Unit) {
         RuleBlock("目的", "A〜Kの13枚を1列に揃えて退避させる。4セット完成でCLEAR。")
         RuleBlock("置き方", "カードは「数字が1つ大きいカード」の上に置けます。空列には何でも置けます。")
         RuleBlock("まとめて移動", "同じスートで連番に並んだカードは、まとめて移動できます。スートが混ざっていると1枚ずつです。")
-        RuleBlock("キング", "キングが列の先頭（一番下）に来ると、ロックされた列が1つ開放されます。5列→6列→7列まで。")
+        RuleBlock("キング", "キングが列の先頭（一番下）に来るか、列の一番上に露出すると、ロックされた列が1つ開放されます。同じキングは1回だけ。5列→6列→7列まで。")
         RuleBlock("配札", "「カードを配る」で、開放中の全列に1枚ずつ配られます。スコアは-50。")
         RuleBlock("リドロー", "配った直後、まだ1枚もカードを動かしていない場合に限り、1回だけ配り直せます。スコアは-100。")
-        RuleBlock("デッドロック", "動かせる手がなく、山札も尽きたらGAME OVERです。")
+        RuleBlock("デッドロック", "前進できる手がなく、山札も尽きたらGAME OVERです。空列へ動かすだけの手は前進に数えません。")
         RuleBlock("AI", "配札はランダムではありません。AIが盤面を評価し、難易度に応じた有利さで札を選びます。")
     }
 }
@@ -178,7 +178,7 @@ fun SettingsScreen(controller: GameController, onBack: () -> Unit) {
         ToggleRow("左利きモード", settings.leftHanded) { controller.updateSettings(settings.copy(leftHanded = it)) }
         ToggleRow("配札は手詰まり時のみ", settings.strictDraw) { controller.updateSettings(settings.copy(strictDraw = it)) }
         Text(
-            "ONにすると仕様書どおり「合法手がないときだけ配札できる」厳格モードになります。",
+            "ONにすると「前進できる手がないときだけ配札できる」厳格モードになります。カードを置いても隣接が増えない手（空列への移動など）は前進に数えません。",
             color = Palette.TextDim,
             fontSize = 11.sp,
             modifier = Modifier.padding(bottom = 12.dp)
