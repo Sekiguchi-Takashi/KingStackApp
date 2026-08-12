@@ -19,9 +19,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -29,6 +34,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.appathy.kingstack.core.Card
@@ -36,12 +42,20 @@ import com.appathy.kingstack.core.GameState
 import com.appathy.kingstack.core.MAX_SLOTS
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 private const val CARD_ASPECT = 0.70f
 private val ROW_GAP = 4.dp
 private val LEFT_PAD = 4.dp
 private val STEP_MAX = 20.dp
 private val STEP_MIN = 11.dp
+
+/**
+ * 画面上から下へ並べる列の順番。
+ * ロックされている6列目・7列目を上に置きたいので、末尾の2列を先頭に持ってくる。
+ * 開放は下側（5→6→7）から進むので、ロック中の帯は常に一番上にまとまる。
+ */
+private val DISPLAY_ORDER = listOf(6, 5, 0, 1, 2, 3, 4)
 
 /**
  * 列は画面の横方向に伸びる帯。1枚目が左端で、以降は右へ少しずつずらして重ねる。
@@ -74,7 +88,10 @@ fun BoardView(
         val step = if (maxCards <= 1) STEP_MAX
         else (available / (maxCards - 1)).coerceIn(STEP_MIN, STEP_MAX)
 
+        var dragPos by remember { mutableStateOf<Offset?>(null) }
+
         val bandPx = with(density) { (rowHeight + ROW_GAP).toPx() }
+        val cardHeightPx = with(density) { cardHeight.toPx() }
         val stepPx = with(density) { step.toPx() }
         val cardWidthPx = with(density) { cardWidth.toPx() }
         val leftPx = with(density) { LEFT_PAD.toPx() }
@@ -87,8 +104,10 @@ fun BoardView(
          */
         fun locate(point: Offset): Pair<Int, Int>? {
             if (bandPx <= 0f || stepPx <= 0f) return null
-            val row = floor(point.y / bandPx).toInt()
-            if (row < 0 || row >= activeCount) return null
+            val position = floor(point.y / bandPx).toInt()
+            if (position < 0 || position >= MAX_SLOTS) return null
+            val row = DISPLAY_ORDER[position]
+            if (row >= activeCount) return null
             val size = slotSizes[row]
             if (size == 0) return row to -1
             val x = point.x - leftPx
@@ -112,20 +131,36 @@ fun BoardView(
                 .pointerInput(slotSizes, activeCount, stepPx) {
                     detectDragGestures(
                         onDragStart = { point ->
+                            dragPos = point
                             val hit = locate(point)
                             if (hit != null) onDragStart(hit.first, hit.second)
                         },
                         onDrag = { change, _ ->
                             change.consume()
+                            dragPos = change.position
                             val hit = locate(change.position)
                             if (hit != null) onDragMove(hit.first, hit.second)
                         },
-                        onDragEnd = { onDragEnd() },
-                        onDragCancel = { onDragEnd() }
+                        onDragEnd = {
+                            dragPos = null
+                            onDragEnd()
+                        },
+                        onDragCancel = {
+                            dragPos = null
+                            onDragEnd()
+                        }
                     )
                 }
         ) {
-            for (row in 0 until MAX_SLOTS) {
+            // 指が元の列から出たら「運んでいる」状態。元の列の中はまだ選び直しの段階。
+            val pointerRow = dragPos?.let { point ->
+                val position = floor(point.y / bandPx).toInt()
+                if (position in 0 until MAX_SLOTS) DISPLAY_ORDER[position] else null
+            }
+            val carrying = selection != null && dragPos != null && pointerRow != selection.first
+
+            for (position in 0 until MAX_SLOTS) {
+                val row = DISPLAY_ORDER[position]
                 val locked = row >= activeCount
                 val cards = state.slots[row]
                 val selectedStart =
@@ -133,7 +168,7 @@ fun BoardView(
 
                 Box(
                     modifier = Modifier
-                        .offset(y = (rowHeight + ROW_GAP) * row)
+                        .offset(y = (rowHeight + ROW_GAP) * position)
                         .fillMaxWidth()
                         .height(rowHeight)
                 ) {
@@ -167,6 +202,7 @@ fun BoardView(
 
                         for (index in order) {
                             val isSelected = selectedStart != null && index >= selectedStart
+                            if (isSelected && carrying) continue
                             val isHinted = hintFrom != null &&
                                 hintFrom.first == row && index >= hintFrom.second
                             CardFace(
@@ -181,6 +217,35 @@ fun BoardView(
                                 topOfStack = index == cards.size - 1
                             )
                         }
+                    }
+                }
+            }
+
+            val point = dragPos
+            if (carrying && point != null && selection != null) {
+                val carried = state.slots[selection.first].drop(selection.second)
+                Box(
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            (point.x - cardWidthPx / 2f).roundToInt(),
+                            (point.y - cardHeightPx / 2f).roundToInt()
+                        )
+                    }
+                ) {
+                    // 運搬中は自然な重ね順（後ろのカードほど手前）。
+                    // 隠れた側は左端の逆さ表示で読める。
+                    carried.forEachIndexed { index, card ->
+                        CardFace(
+                            card = card,
+                            width = cardWidth,
+                            height = cardHeight,
+                            offsetX = step * index,
+                            design = design,
+                            selected = true,
+                            hinted = false,
+                            animate = false,
+                            topOfStack = false
+                        )
                     }
                 }
             }
@@ -263,24 +328,30 @@ private fun CardFace(
             .background(Palette.cardFace(design))
             .border(if (selected || hinted) 2.dp else 1.dp, edge, RoundedCornerShape(6.dp))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(end = 3.dp, top = 2.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = card.label,
-                color = Palette.cardText(design, card.suit.isRed),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = card.suit.mark,
-                color = Palette.cardText(design, card.suit.isRed),
-                fontSize = 12.sp
-            )
-        }
+        // 右上と左下の2箇所に表示する。左下はトランプと同じく180度回転。
+        // どちら側が隠れても、残った側で数字とマークが読める。
+        Index(card, design, Modifier.align(Alignment.TopEnd))
+        Index(card, design, Modifier.align(Alignment.BottomStart).rotate(180f))
+    }
+}
+
+@Composable
+private fun Index(card: Card, design: Int, modifier: Modifier) {
+    Column(
+        modifier = modifier.padding(horizontal = 3.dp, vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = card.label,
+            color = Palette.cardText(design, card.suit.isRed),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = card.suit.mark,
+            color = Palette.cardText(design, card.suit.isRed),
+            fontSize = 12.sp
+        )
     }
 }
 
