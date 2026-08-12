@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -35,32 +35,37 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.appathy.kingstack.core.Card
 import com.appathy.kingstack.core.GameState
 import com.appathy.kingstack.core.MAX_SLOTS
-import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
-private const val CARD_ASPECT = 0.70f
-private val ROW_GAP = 4.dp
-private val LEFT_PAD = 4.dp
-private val STEP_MAX = 20.dp
-private val STEP_MIN = 11.dp
+private const val CARD_ASPECT = 0.72f
+private val ROW_GAP = 3.dp
+private val LEFT_PAD = 3.dp
+private val STEP_MAX = 26.dp
+private val STEP_MIN = 12.dp
+
+/** ドラッグしていない状態を表す番兵。 */
+private const val NO_DRAG = -2
+
+/** 盤面の外に指がある状態を表す番兵。 */
+private const val OUTSIDE = -1
 
 /**
- * 画面上から下へ並べる列の順番。
- * ロックされている6列目・7列目を上に置きたいので、末尾の2列を先頭に持ってくる。
- * 開放は下側（5→6→7）から進むので、ロック中の帯は常に一番上にまとまる。
+ * 画面の上から下へ並べる列の順番。
+ * ロック中の6列目・7列目を上に置く。開放は下から進むので、ロック帯は常に一番上にまとまる。
  */
 private val DISPLAY_ORDER = listOf(6, 5, 0, 1, 2, 3, 4)
 
 /**
- * 列は画面の横方向に伸びる帯。1枚目が左端で、以降は右へ少しずつずらして重ねる。
- * 重ね順は反転させていて、若い番号のカードほど手前に描く。
- * これによりどのカードも右端だけが必ず露出するので、右端に寄せた数字とマークが常に見える。
+ * 列は横方向に伸びる帯。1枚目が左端で、右へ行くほど新しい。
+ * 重ね順は正順なので、一番新しいカードが右端で全面見える。
+ * 隠れる側は左になるため、左側のインデックスで数字とマークが読める。
  */
 @Composable
 fun BoardView(
@@ -88,36 +93,50 @@ fun BoardView(
         val step = if (maxCards <= 1) STEP_MAX
         else (available / (maxCards - 1)).coerceIn(STEP_MIN, STEP_MAX)
 
-        var dragPos by remember { mutableStateOf<Offset?>(null) }
+        val rankSize = (cardHeight.value * 0.26f).coerceIn(11f, 22f).sp
+        val suitSize = (cardHeight.value * 0.23f).coerceIn(10f, 20f).sp
 
         val bandPx = with(density) { (rowHeight + ROW_GAP).toPx() }
-        val cardHeightPx = with(density) { cardHeight.toPx() }
         val stepPx = with(density) { step.toPx() }
         val cardWidthPx = with(density) { cardWidth.toPx() }
+        val cardHeightPx = with(density) { cardHeight.toPx() }
         val leftPx = with(density) { LEFT_PAD.toPx() }
         val slotSizes = state.slots.map { it.size }
         val activeCount = state.activeSlotCount
 
+        // 指の座標はレイアウト時にだけ読む。合成をやり直さないので追従が軽い。
+        val dragPoint = remember { mutableStateOf<Offset?>(null) }
+        // 指が乗っている列。またいだときだけ変わるので、再合成はごく稀。
+        var pointerSlot by remember { mutableStateOf(NO_DRAG) }
+
+        fun rowAt(point: Offset): Int {
+            if (bandPx <= 0f) return OUTSIDE
+            val position = floor(point.y / bandPx).toInt()
+            return if (position in 0 until MAX_SLOTS) DISPLAY_ORDER[position] else OUTSIDE
+        }
+
         /**
          * 画面座標から「どの列の何枚目か」を求める。
+         * 正順に重ねているので、その座標で一番手前にあるのは最も番号の大きいカード。
          * カードの上でなければ index に -1 を返し、その場合は列そのものが対象になる。
          */
         fun locate(point: Offset): Pair<Int, Int>? {
-            if (bandPx <= 0f || stepPx <= 0f) return null
-            val position = floor(point.y / bandPx).toInt()
-            if (position < 0 || position >= MAX_SLOTS) return null
-            val row = DISPLAY_ORDER[position]
-            if (row >= activeCount) return null
+            if (stepPx <= 0f) return null
+            val row = rowAt(point)
+            if (row == OUTSIDE || row >= activeCount) return null
             val size = slotSizes[row]
             if (size == 0) return row to -1
             val x = point.x - leftPx
             if (x < 0f) return row to -1
-            val lowest = ceil((x - cardWidthPx) / stepPx).toInt().coerceAtLeast(0)
-            val highest = floor(x / stepPx).toInt()
-            if (lowest > highest) return row to -1
-            if (lowest > size - 1) return row to -1
-            return row to lowest
+            var index = floor(x / stepPx).toInt()
+            if (index > size - 1) {
+                index = size - 1
+                if (x > index * stepPx + cardWidthPx) return row to -1
+            }
+            return row to index
         }
+
+        val carrying = selection != null && pointerSlot != NO_DRAG && pointerSlot != selection.first
 
         Box(
             modifier = Modifier
@@ -129,36 +148,42 @@ fun BoardView(
                     }
                 }
                 .pointerInput(slotSizes, activeCount, stepPx) {
+                    // 同じカードを指し続けている間は通知しない。無駄な再合成を止めて滑らかにする。
+                    var lastHit: Pair<Int, Int>? = null
                     detectDragGestures(
                         onDragStart = { point ->
-                            dragPos = point
+                            dragPoint.value = point
+                            pointerSlot = rowAt(point)
                             val hit = locate(point)
+                            lastHit = hit
                             if (hit != null) onDragStart(hit.first, hit.second)
                         },
                         onDrag = { change, _ ->
                             change.consume()
-                            dragPos = change.position
+                            dragPoint.value = change.position
+                            val row = rowAt(change.position)
+                            if (row != pointerSlot) pointerSlot = row
                             val hit = locate(change.position)
-                            if (hit != null) onDragMove(hit.first, hit.second)
+                            if (hit != lastHit) {
+                                lastHit = hit
+                                if (hit != null) onDragMove(hit.first, hit.second)
+                            }
                         },
                         onDragEnd = {
-                            dragPos = null
+                            dragPoint.value = null
+                            pointerSlot = NO_DRAG
+                            lastHit = null
                             onDragEnd()
                         },
                         onDragCancel = {
-                            dragPos = null
+                            dragPoint.value = null
+                            pointerSlot = NO_DRAG
+                            lastHit = null
                             onDragEnd()
                         }
                     )
                 }
         ) {
-            // 指が元の列から出たら「運んでいる」状態。元の列の中はまだ選び直しの段階。
-            val pointerRow = dragPos?.let { point ->
-                val position = floor(point.y / bandPx).toInt()
-                if (position in 0 until MAX_SLOTS) DISPLAY_ORDER[position] else null
-            }
-            val carrying = selection != null && dragPos != null && pointerRow != selection.first
-
             for (position in 0 until MAX_SLOTS) {
                 val row = DISPLAY_ORDER[position]
                 val locked = row >= activeCount
@@ -192,15 +217,7 @@ fun BoardView(
                             )
                         }
 
-                        val order = ArrayList<Int>(cards.size)
-                        for (index in cards.indices.reversed()) {
-                            if (selectedStart == null || index < selectedStart) order.add(index)
-                        }
-                        if (selectedStart != null) {
-                            for (index in selectedStart until cards.size) order.add(index)
-                        }
-
-                        for (index in order) {
+                        for (index in cards.indices) {
                             val isSelected = selectedStart != null && index >= selectedStart
                             if (isSelected && carrying) continue
                             val isHinted = hintFrom != null &&
@@ -214,41 +231,73 @@ fun BoardView(
                                 selected = isSelected,
                                 hinted = isHinted,
                                 animate = animate,
-                                topOfStack = index == cards.size - 1
+                                topOfStack = index == cards.size - 1,
+                                rankSize = rankSize,
+                                suitSize = suitSize
                             )
                         }
                     }
                 }
             }
 
-            val point = dragPos
-            if (carrying && point != null && selection != null) {
-                val carried = state.slots[selection.first].drop(selection.second)
-                Box(
-                    modifier = Modifier.offset {
-                        IntOffset(
-                            (point.x - cardWidthPx / 2f).roundToInt(),
-                            (point.y - cardHeightPx / 2f).roundToInt()
-                        )
-                    }
-                ) {
-                    // 運搬中は自然な重ね順（後ろのカードほど手前）。
-                    // 隠れた側は左端の逆さ表示で読める。
-                    carried.forEachIndexed { index, card ->
-                        CardFace(
-                            card = card,
-                            width = cardWidth,
-                            height = cardHeight,
-                            offsetX = step * index,
-                            design = design,
-                            selected = true,
-                            hinted = false,
-                            animate = false,
-                            topOfStack = false
-                        )
-                    }
-                }
+            if (carrying && selection != null) {
+                CarriedStack(
+                    cards = state.slots[selection.first].drop(selection.second),
+                    point = dragPoint,
+                    cardWidth = cardWidth,
+                    cardHeight = cardHeight,
+                    cardWidthPx = cardWidthPx,
+                    cardHeightPx = cardHeightPx,
+                    step = step,
+                    design = design,
+                    rankSize = rankSize,
+                    suitSize = suitSize
+                )
             }
+        }
+    }
+}
+
+/**
+ * 指について動く運搬中のカード。
+ * 座標の読み取りを offset のラムダに閉じ込めてあるので、指を動かしても再合成は起きない。
+ */
+@Composable
+private fun CarriedStack(
+    cards: List<Card>,
+    point: State<Offset?>,
+    cardWidth: Dp,
+    cardHeight: Dp,
+    cardWidthPx: Float,
+    cardHeightPx: Float,
+    step: Dp,
+    design: Int,
+    rankSize: TextUnit,
+    suitSize: TextUnit
+) {
+    Box(
+        modifier = Modifier.offset {
+            val current = point.value ?: return@offset IntOffset.Zero
+            IntOffset(
+                (current.x - cardWidthPx / 2f).roundToInt(),
+                (current.y - cardHeightPx / 2f).roundToInt()
+            )
+        }
+    ) {
+        cards.forEachIndexed { index, card ->
+            CardFace(
+                card = card,
+                width = cardWidth,
+                height = cardHeight,
+                offsetX = step * index,
+                design = design,
+                selected = true,
+                hinted = false,
+                animate = false,
+                topOfStack = index == cards.size - 1,
+                rankSize = rankSize,
+                suitSize = suitSize
+            )
         }
     }
 }
@@ -304,9 +353,11 @@ private fun CardFace(
     selected: Boolean,
     hinted: Boolean,
     animate: Boolean,
-    topOfStack: Boolean
+    topOfStack: Boolean,
+    rankSize: TextUnit,
+    suitSize: TextUnit
 ) {
-    val target = if (selected) 1.16f else 1f
+    val target = if (selected) 1.10f else 1f
     val scale = if (animate) {
         animateFloatAsState(targetValue = target, label = "scale").value
     } else {
@@ -328,29 +379,35 @@ private fun CardFace(
             .background(Palette.cardFace(design))
             .border(if (selected || hinted) 2.dp else 1.dp, edge, RoundedCornerShape(6.dp))
     ) {
-        // 右上と左下の2箇所に表示する。左下はトランプと同じく180度回転。
-        // どちら側が隠れても、残った側で数字とマークが読める。
-        Index(card, design, Modifier.align(Alignment.TopEnd))
-        Index(card, design, Modifier.align(Alignment.BottomStart).rotate(180f))
+        // 左上と右上の2箇所。どちらも正立。
+        // 重なって隠れるのは左側ではなく右側なので、左のインデックスが常に読める。
+        Index(card, design, rankSize, suitSize, Modifier.align(Alignment.TopStart))
+        Index(card, design, rankSize, suitSize, Modifier.align(Alignment.TopEnd))
     }
 }
 
 @Composable
-private fun Index(card: Card, design: Int, modifier: Modifier) {
+private fun Index(
+    card: Card,
+    design: Int,
+    rankSize: TextUnit,
+    suitSize: TextUnit,
+    modifier: Modifier
+) {
     Column(
-        modifier = modifier.padding(horizontal = 3.dp, vertical = 2.dp),
+        modifier = modifier.padding(horizontal = 3.dp, vertical = 1.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = card.label,
             color = Palette.cardText(design, card.suit.isRed),
-            fontSize = 13.sp,
+            fontSize = rankSize,
             fontWeight = FontWeight.Bold
         )
         Text(
             text = card.suit.mark,
             color = Palette.cardText(design, card.suit.isRed),
-            fontSize = 12.sp
+            fontSize = suitSize
         )
     }
 }
@@ -361,7 +418,7 @@ fun DotRow(total: Int, filled: Int, activeColor: Color, size: Dp = 10.dp) {
         for (i in 0 until total) {
             Box(
                 modifier = Modifier
-                    .padding(end = 4.dp)
+                    .padding(end = 3.dp)
                     .size(size)
                     .clip(RoundedCornerShape(percent = 50))
                     .background(if (i < filled) activeColor else Color(0x33FFFFFF))

@@ -2,6 +2,7 @@ package com.appathy.kingstack.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,55 +48,96 @@ fun GameScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Palette.Background)
-            .padding(horizontal = 8.dp, vertical = 10.dp)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
     ) {
+        // 1行目: スコアと進捗。高さを詰めて盤面に場所を譲る。
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("SCORE", color = Palette.TextDim, fontSize = 10.sp)
+            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = state.score.toString(),
                     color = Palette.Gold,
-                    fontSize = 24.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-            }
-            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = if (state.daily) "DAILY" else state.difficulty.label,
+                    text = if (state.daily) "  DAILY" else "  " + state.difficulty.label,
                     color = Palette.TextDim,
-                    fontSize = 10.sp
+                    fontSize = 9.sp,
+                    modifier = Modifier.padding(bottom = 2.dp)
                 )
-                TextButton(onClick = { paused = true }) {
-                    Text("MENU", color = Palette.TextMain, fontSize = 14.sp)
-                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DotRow(COMPLETE_TARGET, state.completedCount, Palette.Gold, 10.dp)
+                Spacer(modifier = Modifier.width(10.dp))
+                DotRow(MAX_SLOTS, state.activeSlotCount, Palette.Highlight, 7.dp)
             }
         }
 
+        // 2行目: 操作ボタン。配る以外はすべてここに集約する。
+        val actions: @Composable () -> Unit = {
+            SmallAction("MENU", true) { paused = true }
+            Spacer(modifier = Modifier.width(6.dp))
+            SmallAction("Undo", controller.canUndo) { controller.undo() }
+            Spacer(modifier = Modifier.width(6.dp))
+            SmallAction("Hint", state.status == GameStatus.PLAYING) { controller.useHint() }
+            if (settings.redrawEnabled) {
+                Spacer(modifier = Modifier.width(6.dp))
+                SmallAction("リドロー", controller.canRedraw) { controller.redraw() }
+            }
+        }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = if (settings.leftHanded) Arrangement.Start else Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("完成", color = Palette.TextDim, fontSize = 11.sp)
-            Spacer(modifier = Modifier.width(6.dp))
-            DotRow(COMPLETE_TARGET, state.completedCount, Palette.Gold, 12.dp)
-            Spacer(modifier = Modifier.width(14.dp))
-            Text("列", color = Palette.TextDim, fontSize = 11.sp)
-            Spacer(modifier = Modifier.width(6.dp))
-            DotRow(MAX_SLOTS, state.activeSlotCount, Palette.Highlight, 9.dp)
-            Spacer(modifier = Modifier.weight(1f))
-            Text("残り ${state.drawPile.size}", color = Palette.TextDim, fontSize = 11.sp)
+            actions()
         }
 
+        // 3行目: 状態表示。
+        val hint = controller.hint
+        val message = controller.lastMessage
+        Box(
+            modifier = Modifier.fillMaxWidth().height(20.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            when {
+                hint != null -> Text(
+                    text = "HINT: " + hint.reason,
+                    color = Palette.Highlight,
+                    fontSize = 11.sp
+                )
+                message != null -> Text(text = message, color = Palette.Danger, fontSize = 11.sp)
+                state.combo >= 2 -> Text(
+                    text = "CHAIN × " + state.combo,
+                    color = Palette.Gold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                controller.stuck -> Text(
+                    text = "手詰まりです。カードを配れます",
+                    color = Palette.TextDim,
+                    fontSize = 11.sp
+                )
+                else -> Text(
+                    text = "移動 " + state.moveCount + " / 配札 " + state.drawCount +
+                        " / 前進できる手 " + controller.productiveCount,
+                    color = Palette.TextDim,
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        // 盤面。残りの高さをすべて使う。
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Palette.Felt, RoundedCornerShape(10.dp))
-                .padding(6.dp)
+                .background(Palette.Felt, RoundedCornerShape(8.dp))
+                .padding(3.dp)
         ) {
             BoardView(
                 state = state,
@@ -113,56 +155,23 @@ fun GameScreen(
             )
         }
 
-        val hint = controller.hint
-        val message = controller.lastMessage
-        Box(modifier = Modifier.fillMaxWidth().height(34.dp), contentAlignment = Alignment.Center) {
-            when {
-                hint != null -> Text(
-                    text = "HINT: ${hint.reason}",
-                    color = Palette.Highlight,
-                    fontSize = 12.sp
-                )
-                message != null -> Text(text = message, color = Palette.Danger, fontSize = 12.sp)
-                state.combo >= 2 -> Text(
-                    text = "CHAIN × ${state.combo}",
-                    color = Palette.Gold,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                controller.stuck -> Text(
-                    text = "手詰まりです。カードを配れます",
-                    color = Palette.TextDim,
-                    fontSize = 12.sp
-                )
-                else -> Text(
-                    text = "移動 ${state.moveCount} / 配札 ${state.drawCount} / 前進できる手 ${controller.productiveCount}",
-                    color = Palette.TextDim,
-                    fontSize = 11.sp
-                )
-            }
-        }
-
-        val actions: @Composable () -> Unit = {
-            SmallAction("Undo", controller.canUndo) { controller.undo() }
-            Spacer(modifier = Modifier.width(8.dp))
-            SmallAction("Hint", state.status == GameStatus.PLAYING) { controller.useHint() }
-            if (settings.redrawEnabled) {
-                Spacer(modifier = Modifier.width(8.dp))
-                SmallAction("リドロー", controller.canRedraw) { controller.redraw() }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = if (settings.leftHanded) Arrangement.Start else Arrangement.End
+        // 残り枚数は配るボタンの真上に置く。
+        Box(
+            modifier = Modifier.fillMaxWidth().height(18.dp),
+            contentAlignment = Alignment.Center
         ) {
-            actions()
+            Text(
+                text = "残り " + state.drawPile.size + " 枚",
+                color = Palette.TextDim,
+                fontSize = 11.sp
+            )
         }
 
+        val dealCount = minOf(state.activeSlotCount, state.drawPile.size)
         Button(
             onClick = { controller.drawCards() },
             enabled = controller.canPressDraw,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Palette.Gold,
@@ -171,8 +180,8 @@ fun GameScreen(
                 disabledContentColor = Color(0x66000000)
             )
         ) {
-            val dealCount = minOf(state.activeSlotCount, state.drawPile.size)
-            val label = if (state.drawPile.isEmpty()) "山札なし" else "カードを配る（" + dealCount + "枚）"
+            val label = if (state.drawPile.isEmpty()) "山札なし"
+            else "カードを配る（" + dealCount + "枚）"
             Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -210,7 +219,7 @@ fun GameScreen(
             title = "CLEAR",
             lines = listOf(
                 "スコア" to state.score.toString(),
-                "完成数" to "${state.completedCount} / $COMPLETE_TARGET",
+                "完成数" to (state.completedCount.toString() + " / " + COMPLETE_TARGET),
                 "移動数" to state.moveCount.toString(),
                 "配札数" to state.drawCount.toString(),
                 "リドロー数" to state.redrawCount.toString(),
@@ -226,7 +235,7 @@ fun GameScreen(
             title = "GAME OVER",
             lines = listOf(
                 "スコア" to state.score.toString(),
-                "完成数" to "${state.completedCount} / $COMPLETE_TARGET",
+                "完成数" to (state.completedCount.toString() + " / " + COMPLETE_TARGET),
                 "残りカード" to state.cardsOnBoard.toString(),
                 "移動数" to state.moveCount.toString(),
                 "最大CHAIN" to state.maxCombo.toString()
@@ -242,6 +251,8 @@ private fun SmallAction(label: String, enabled: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = enabled,
+        modifier = Modifier.height(38.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Palette.Surface,
