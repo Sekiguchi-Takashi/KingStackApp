@@ -15,7 +15,8 @@ data class Settings(
     val animation: Boolean = true,
     val cardDesign: Int = 0,
     val leftHanded: Boolean = false,
-    val strictDraw: Boolean = true
+    val strictDraw: Boolean = true,
+    val redrawEnabled: Boolean = true
 )
 
 data class Stats(
@@ -127,7 +128,8 @@ class SaveStore(context: Context) {
         animation = prefs.getBoolean("animation", true),
         cardDesign = prefs.getInt("cardDesign", 0),
         leftHanded = prefs.getBoolean("leftHanded", false),
-        strictDraw = prefs.getBoolean("strictDraw", true)
+        strictDraw = prefs.getBoolean("strictDraw", true),
+        redrawEnabled = prefs.getBoolean("redrawEnabled", true)
     )
 
     fun saveSettings(settings: Settings) {
