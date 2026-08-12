@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,7 +42,6 @@ fun GameScreen(
     val state = controller.state
     val settings = controller.settings
     var paused by remember { mutableStateOf(false) }
-    val scroll = rememberScrollState()
 
     Column(
         modifier = Modifier
@@ -98,8 +95,7 @@ fun GameScreen(
                 .fillMaxWidth()
                 .weight(1f)
                 .background(Palette.Felt, RoundedCornerShape(10.dp))
-                .padding(vertical = 8.dp)
-                .verticalScroll(scroll)
+                .padding(6.dp)
         ) {
             BoardView(
                 state = state,
@@ -107,10 +103,13 @@ fun GameScreen(
                 animate = settings.animation,
                 selection = controller.selection,
                 targets = controller.legalTargets,
+                hover = controller.hover,
                 hintFrom = controller.hint?.let { it.move.from to it.move.fromIndex },
                 hintTo = controller.hint?.move?.to,
-                onCardTap = { slot, index -> controller.tapCard(slot, index) },
-                onSlotTap = { slot -> controller.tapSlot(slot) }
+                onTap = { slot, index -> controller.tapCard(slot, index) },
+                onDragStart = { slot, index -> controller.dragStart(slot, index) },
+                onDragMove = { slot, index -> controller.dragMove(slot, index) },
+                onDragEnd = { controller.dragEnd() }
             )
         }
 
@@ -147,8 +146,10 @@ fun GameScreen(
             SmallAction("Undo", controller.canUndo) { controller.undo() }
             Spacer(modifier = Modifier.width(8.dp))
             SmallAction("Hint", state.status == GameStatus.PLAYING) { controller.useHint() }
-            Spacer(modifier = Modifier.width(8.dp))
-            SmallAction("リドロー", controller.canRedraw) { controller.redraw() }
+            if (settings.redrawEnabled) {
+                Spacer(modifier = Modifier.width(8.dp))
+                SmallAction("リドロー", controller.canRedraw) { controller.redraw() }
+            }
         }
 
         Row(

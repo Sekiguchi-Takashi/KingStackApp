@@ -150,6 +150,8 @@ fun RulesScreen(onBack: () -> Unit) {
         RuleBlock("目的", "A〜Kの13枚を1列に揃えて退避させる。4セット完成でCLEAR。")
         RuleBlock("置き方", "カードは「数字が1つ大きいカード」の上に置けます。空列には何でも置けます。")
         RuleBlock("まとめて移動", "同じスートで連番に並んだカードは、まとめて移動できます。スートが混ざっていると1枚ずつです。")
+        RuleBlock("操作", "列は横に伸びます。1枚目が左端で、右へ行くほど新しいカードです。指でカードの上をなぞると、最後に触れたカードが選ばれて少し大きくなります。動かせないカードは飛ばされ、直前のカードが選ばれたままになります。")
+        RuleBlock("置き方の操作", "選んだまま指を別の列の帯へ動かすと、その列が光ります。カードの上に正確に重ねる必要はなく、帯のどこで指を離してもその列の末尾に置かれます。")
         RuleBlock("キング", "キングが列の先頭（一番下）に来るか、列の一番上に露出すると、ロックされた列が1つ開放されます。同じキングは1回だけ。5列→6列→7列まで。")
         RuleBlock("配札", "「カードを配る」で、開放中の全列に1枚ずつ配られます。スコアは-50。")
         RuleBlock("リドロー", "配った直後、まだ1枚もカードを動かしていない場合に限り、1回だけ配り直せます。スコアは-100。")
@@ -176,6 +178,13 @@ fun SettingsScreen(controller: GameController, onBack: () -> Unit) {
         ToggleRow("振動", settings.vibration) { controller.updateSettings(settings.copy(vibration = it)) }
         ToggleRow("アニメーション", settings.animation) { controller.updateSettings(settings.copy(animation = it)) }
         ToggleRow("左利きモード", settings.leftHanded) { controller.updateSettings(settings.copy(leftHanded = it)) }
+        ToggleRow("リドロー機能", settings.redrawEnabled) { controller.updateSettings(settings.copy(redrawEnabled = it)) }
+        Text(
+            "OFFにするとリドローボタンが消え、配り直しなしの一発勝負になります。",
+            color = Palette.TextDim,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
         ToggleRow("配札は手詰まり時のみ", settings.strictDraw) { controller.updateSettings(settings.copy(strictDraw = it)) }
         Text(
             "ONにすると「前進できる手がないときだけ配札できる」厳格モードになります。カードを置いても隣接が増えない手（空列への移動など）は前進に数えません。",

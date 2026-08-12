@@ -138,6 +138,7 @@ class SaveStore(context: Context) {
             .putInt("cardDesign", settings.cardDesign)
             .putBoolean("leftHanded", settings.leftHanded)
             .putBoolean("strictDraw", settings.strictDraw)
+            .putBoolean("redrawEnabled", settings.redrawEnabled)
             .apply()
     }
 

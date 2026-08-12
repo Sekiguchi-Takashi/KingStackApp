@@ -34,6 +34,10 @@ class GameController(
 
     var lastMessage by mutableStateOf<String?>(null)
 
+    /** ドラッグ中に指が乗っている列。ここで指を離すと移動が確定する。 */
+    var hover by mutableStateOf<Int?>(null)
+        private set
+
     private val undoStack = ArrayDeque<GameState>()
     private var preDraw: GameState? = null
     private var recorded = false
@@ -60,7 +64,8 @@ class GameController(
         get() = canPressDraw && (!settings.strictDraw || stuck)
 
     val canRedraw: Boolean
-        get() = state.status == GameStatus.PLAYING && state.redrawAvailable && preDraw != null
+        get() = settings.redrawEnabled && state.status == GameStatus.PLAYING &&
+            state.redrawAvailable && preDraw != null
 
     val canUndo: Boolean
         get() = state.status == GameStatus.PLAYING && undoStack.isNotEmpty()
@@ -102,6 +107,7 @@ class GameController(
         preDraw = null
         recorded = false
         selection = null
+        hover = null
         hint = null
         lastMessage = null
         state = next
@@ -110,6 +116,10 @@ class GameController(
 
     fun tapCard(slot: Int, index: Int) {
         if (state.status != GameStatus.PLAYING) return
+        if (index < 0) {
+            tapSlot(slot)
+            return
+        }
         val current = selection
         if (current != null && current.first != slot) {
             tryMove(current.first, current.second, slot)
@@ -128,6 +138,57 @@ class GameController(
         }
         selection = slot to index
         lastMessage = null
+    }
+
+    /**
+     * 指が触れた瞬間。動かせないカードならアクティブにしない。
+     */
+    fun dragStart(slot: Int, index: Int) {
+        if (state.status != GameStatus.PLAYING) return
+        hover = null
+        if (index < 0) return
+        val column = state.slots.getOrNull(slot) ?: return
+        if (index in column.indices && Rules.isMovableRun(column, index)) {
+            selection = slot to index
+            lastMessage = null
+        }
+    }
+
+    /**
+     * なぞっている最中。
+     * 同じ列の上では最後に触れたカードをアクティブにするが、動かせないカードは飛ばして
+     * 直前のカードをアクティブのまま保つ。別の列の帯に入ったら、そこが移動先候補になる。
+     */
+    fun dragMove(slot: Int, index: Int) {
+        if (state.status != GameStatus.PLAYING) return
+        val current = selection
+        if (current == null) {
+            if (index < 0) return
+            val column = state.slots.getOrNull(slot) ?: return
+            if (index in column.indices && Rules.isMovableRun(column, index)) {
+                selection = slot to index
+            }
+            return
+        }
+        if (slot == current.first) {
+            hover = null
+            if (index < 0) return
+            val column = state.slots[slot]
+            if (index in column.indices && Rules.isMovableRun(column, index)) {
+                selection = slot to index
+            }
+            return
+        }
+        hover = if (legalTargets.contains(slot)) slot else null
+    }
+
+    /** 指を離した瞬間。移動先候補の帯の上なら、その列の末尾へ置く。 */
+    fun dragEnd() {
+        val current = selection
+        val target = hover
+        hover = null
+        if (current == null || target == null) return
+        tryMove(current.first, current.second, target)
     }
 
     fun tapSlot(slot: Int) {
@@ -154,6 +215,7 @@ class GameController(
         val next = Engine.applyMove(before, move)
         state = next
         selection = null
+        hover = null
         hint = null
         lastMessage = null
         if (next.completedCount > before.completedCount || next.activeSlotCount > before.activeSlotCount) {
