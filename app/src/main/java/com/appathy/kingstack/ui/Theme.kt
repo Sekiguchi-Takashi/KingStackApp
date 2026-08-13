@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.appathy.kingstack.core.Suit
 
 object Palette {
     val Background = Color(0xFF0B1A15)
@@ -21,11 +22,25 @@ object Palette {
 
     fun cardFace(design: Int): Color = if (design == 0) Color(0xFFF7F1E1) else Color(0xFF1B2430)
     fun cardEdge(design: Int): Color = if (design == 0) Color(0xFFB9A87F) else Color(0xFF4A5A6E)
-    fun cardText(design: Int, red: Boolean): Color = when {
-        design == 0 && red -> Color(0xFFB03A2E)
-        design == 0 -> Color(0xFF1C2620)
-        red -> Color(0xFFEB7B6A)
-        else -> Color(0xFFE6EDF5)
+
+    /**
+     * 同じ赤どうし・同じ黒どうしを見分けられるよう、スートごとに色を分ける。
+     * ハートとスペードを純色、ダイヤとクラブを従来の落ち着いた色にしている。
+     */
+    fun cardText(design: Int, suit: Suit): Color = if (design == 0) {
+        when (suit) {
+            Suit.HEART -> Color(0xFFD41111)
+            Suit.DIAMOND -> Color(0xFFB0603A)
+            Suit.SPADE -> Color(0xFF000000)
+            Suit.CLUB -> Color(0xFF2E4A3C)
+        }
+    } else {
+        when (suit) {
+            Suit.HEART -> Color(0xFFFF5A5A)
+            Suit.DIAMOND -> Color(0xFFEB9B6A)
+            Suit.SPADE -> Color(0xFFFFFFFF)
+            Suit.CLUB -> Color(0xFFAFC6BA)
+        }
     }
 }
 

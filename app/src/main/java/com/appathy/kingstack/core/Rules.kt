@@ -43,6 +43,18 @@ object Rules {
         return runStartIndices(slot).minOrNull() ?: (slot.size - 1)
     }
 
+    /**
+     * そのカードに触れたときに掴む位置。
+     * 重なって続いているカードは束ごと動かしたいので、上のカードではなく束の根元を返す。
+     * 動かせないカードに触れた場合は -1。
+     */
+    fun grabStart(slot: List<Card>, index: Int): Int {
+        if (index !in slot.indices) return -1
+        val start = longestRunStart(slot)
+        if (start < 0) return -1
+        return if (index >= start) start else -1
+    }
+
     fun legalMoves(state: GameState): List<Move> {
         val moves = mutableListOf<Move>()
         for (from in 0 until state.activeSlotCount) {

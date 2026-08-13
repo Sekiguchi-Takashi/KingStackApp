@@ -379,10 +379,8 @@ private fun CardFace(
             .background(Palette.cardFace(design))
             .border(if (selected || hinted) 2.dp else 1.dp, edge, RoundedCornerShape(6.dp))
     ) {
-        // 左上と右上の2箇所。どちらも正立。
-        // 重なって隠れるのは左側ではなく右側なので、左のインデックスが常に読める。
+        // 隠れるのは右側なので、インデックスは左上の1箇所だけでよい。
         Index(card, design, rankSize, suitSize, Modifier.align(Alignment.TopStart))
-        Index(card, design, rankSize, suitSize, Modifier.align(Alignment.TopEnd))
     }
 }
 
@@ -400,13 +398,13 @@ private fun Index(
     ) {
         Text(
             text = card.label,
-            color = Palette.cardText(design, card.suit.isRed),
+            color = Palette.cardText(design, card.suit),
             fontSize = rankSize,
             fontWeight = FontWeight.Bold
         )
         Text(
             text = card.suit.mark,
-            color = Palette.cardText(design, card.suit.isRed),
+            color = Palette.cardText(design, card.suit),
             fontSize = suitSize
         )
     }

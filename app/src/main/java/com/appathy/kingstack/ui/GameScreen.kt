@@ -56,20 +56,12 @@ fun GameScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = state.score.toString(),
-                    color = Palette.Gold,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (state.daily) "  DAILY" else "  " + state.difficulty.label,
-                    color = Palette.TextDim,
-                    fontSize = 9.sp,
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
-            }
+            Text(
+                text = if (state.daily) "DAILY" else state.difficulty.label,
+                color = Palette.TextDim,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DotRow(COMPLETE_TARGET, state.completedCount, Palette.Gold, 10.dp)
                 Spacer(modifier = Modifier.width(10.dp))
@@ -155,34 +147,42 @@ fun GameScreen(
             )
         }
 
-        // 残り枚数は配るボタンの真上に置く。
-        Box(
-            modifier = Modifier.fillMaxWidth().height(18.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "残り " + state.drawPile.size + " 枚",
-                color = Palette.TextDim,
-                fontSize = 11.sp
-            )
-        }
-
+        // 下段は左に配るボタン、右に残り枚数とスコア。
         val dealCount = minOf(state.activeSlotCount, state.drawPile.size)
-        Button(
-            onClick = { controller.drawCards() },
-            enabled = controller.canPressDraw,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Palette.Gold,
-                contentColor = Palette.Background,
-                disabledContainerColor = Palette.GoldDim,
-                disabledContentColor = Color(0x66000000)
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            val label = if (state.drawPile.isEmpty()) "山札なし"
-            else "カードを配る（" + dealCount + "枚）"
-            Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Button(
+                onClick = { controller.drawCards() },
+                enabled = controller.canPressDraw,
+                modifier = Modifier.weight(1f).height(54.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Palette.Gold,
+                    contentColor = Palette.Background,
+                    disabledContainerColor = Palette.GoldDim,
+                    disabledContentColor = Color(0x66000000)
+                )
+            ) {
+                val label = if (state.drawPile.isEmpty()) "山札なし"
+                else "カードを配る（" + dealCount + "枚）"
+                Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "残り " + state.drawPile.size + " 枚",
+                    color = Palette.TextDim,
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = state.score.toString(),
+                    color = Palette.Gold,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 

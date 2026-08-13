@@ -125,18 +125,22 @@ class GameController(
             tryMove(current.first, current.second, slot)
             return
         }
-        if (current != null && current.first == slot && current.second == index) {
-            selection = null
-            return
-        }
         val column = state.slots[slot]
-        if (index !in column.indices) return
-        if (!Rules.isMovableRun(column, index)) {
-            feedback.reject(settings)
-            lastMessage = "その位置からはまとめて動かせません"
+        val start = Rules.grabStart(column, index)
+        if (current != null && current.first == slot) {
+            // 同じ列を続けてタップすると、束を1枚ずつ短くできる。
+            // 束の一番上まで来たら選択解除。
+            val next = current.second + 1
+            selection = if (next > column.size - 1) null else slot to next
             return
         }
-        selection = slot to index
+        if (start < 0) {
+            feedback.reject(settings)
+            lastMessage = "そのカードは動かせません"
+            return
+        }
+        // 重なって続いているカードは束の根元から掴む。上のカードだけを選ばない。
+        selection = slot to start
         lastMessage = null
     }
 
@@ -148,8 +152,9 @@ class GameController(
         hover = null
         if (index < 0) return
         val column = state.slots.getOrNull(slot) ?: return
-        if (index in column.indices && Rules.isMovableRun(column, index)) {
-            selection = slot to index
+        val start = Rules.grabStart(column, index)
+        if (start >= 0) {
+            selection = slot to start
             lastMessage = null
         }
     }
@@ -165,18 +170,13 @@ class GameController(
         if (current == null) {
             if (index < 0) return
             val column = state.slots.getOrNull(slot) ?: return
-            if (index in column.indices && Rules.isMovableRun(column, index)) {
-                selection = slot to index
-            }
+            val start = Rules.grabStart(column, index)
+            if (start >= 0) selection = slot to start
             return
         }
         if (slot == current.first) {
+            // 元の列の中で指がずれても、掴んだ束が減らないようにする。
             hover = null
-            if (index < 0) return
-            val column = state.slots[slot]
-            if (index in column.indices && Rules.isMovableRun(column, index)) {
-                selection = slot to index
-            }
             return
         }
         hover = if (legalTargets.contains(slot)) slot else null
