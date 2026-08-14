@@ -37,7 +37,16 @@ ui/     Theme, BoardView, GameScreen, Screens
 
 ## ビルド
 
-main へのpushでGitHub Actionsがdebug APKをビルドし、Releaseに添付する。
+配布は `deploy.sh` に集約する。push と次タグの発行までを1コマンドで行う。
+
+    bash deploy.sh "コミットメッセージ"
+
+`git pull --rebase origin main` を含めてあるのは、カタログ管理システムが API 経由で
+`.github/workflows/release.yml` と `ci/appathy.keystore` を直接コミットするため。
+これが無いと push が rejected になる。この2ファイルと `ci/` は配布ビルドに必要なので削除しない。
+
+タグが打たれると Actions が配布用ビルドを走らせ、Release が作られて自作アプリストアに更新として現れる。
+`.github/workflows/build.yml` は手元確認用の debug ビルドで、手動実行のときだけ動く（Release は作らない）。
 
 ## 盤面レイアウト（v1.2）
 

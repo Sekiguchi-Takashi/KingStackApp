@@ -2,7 +2,14 @@
 
 ## 現在地
 
-v1.6。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+v1.7。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+
+### v1.7で変えたこと（配布）
+- `deploy.sh` を恒久仕様に差し替え。`git pull --rebase origin main` とタグ発行までを1コマンドで完結する。
+  最新リリースのタグ末尾を +1 して次タグを算出し（無ければ v1.0.0）、GitHub API で `refs/tags` に POST する。
+- `.github/workflows/build.yml` は `workflow_dispatch` のみに変更し、Release を作らないようにした。
+  配布用の Release はタグを起点に `release.yml` が担当するため、二重に作らせない。
+- `ci/` と `.github/workflows/release.yml` はカタログ管理システムが直接コミットする。削除しないこと。
 
 ### v1.6で変えたこと（UI・操作）
 - インデックスを左上の1箇所だけに（隠れるのは右側なので右上は不要）。
