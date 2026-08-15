@@ -1,6 +1,9 @@
 package com.appathy.kingstack.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,8 +45,10 @@ import androidx.compose.ui.unit.sp
 import com.appathy.kingstack.core.Card
 import com.appathy.kingstack.core.GameState
 import com.appathy.kingstack.core.MAX_SLOTS
+import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private const val CARD_ASPECT = 0.72f
 private val ROW_GAP = 3.dp
@@ -103,6 +109,24 @@ fun BoardView(
         val leftPx = with(density) { LEFT_PAD.toPx() }
         val slotSizes = state.slots.map { it.size }
         val activeCount = state.activeSlotCount
+
+        // キングで列が増えた瞬間を捉えて、その列だけを短く光らせる。
+        var lastActive by remember { mutableStateOf(activeCount) }
+        var unlockedRow by remember { mutableStateOf(-1) }
+        val pulse = remember { Animatable(0f) }
+        LaunchedEffect(activeCount) {
+            if (activeCount > lastActive) {
+                unlockedRow = activeCount - 1
+                lastActive = activeCount
+                if (animate) {
+                    pulse.snapTo(0f)
+                    pulse.animateTo(1f, tween(durationMillis = 1100, easing = LinearEasing))
+                }
+                unlockedRow = -1
+            } else {
+                lastActive = activeCount
+            }
+        }
 
         // 指の座標はレイアウト時にだけ読む。合成をやり直さないので追従が軽い。
         val dragPoint = remember { mutableStateOf<Offset?>(null) }
@@ -202,7 +226,8 @@ fun BoardView(
                         locked = locked,
                         legal = targets.contains(row),
                         hovered = hover == row,
-                        hinted = hintTo == row
+                        hinted = hintTo == row,
+                        unlock = if (row == unlockedRow) pulse.value else -1f
                     )
 
                     if (!locked) {
@@ -302,14 +327,23 @@ private fun CarriedStack(
     }
 }
 
+/**
+ * 列の帯。
+ * unlock は開放演出の進行度で、0から1へ進む間だけ光る。-1 は演出なし。
+ */
 @Composable
 private fun RowBand(
     height: Dp,
     locked: Boolean,
     legal: Boolean,
     hovered: Boolean,
-    hinted: Boolean
+    hinted: Boolean,
+    unlock: Float
 ) {
+    // 3回ほど明滅させながら、全体としては減衰させる。
+    val flash = if (unlock < 0f) 0f
+    else ((1f - unlock) * abs(sin(unlock * 3f * PI_F))).coerceIn(0f, 1f)
+
     val fill = when {
         hovered -> Color(0x33E3B84F)
         legal -> Color(0x1AE3B84F)
@@ -317,20 +351,34 @@ private fun RowBand(
         else -> Color(0x0AFFFFFF)
     }
     val edge = when {
+        flash > 0f -> Palette.Gold
         hovered -> Palette.Gold
         legal -> Palette.GoldDim
         hinted -> Palette.Highlight
         else -> Color(0x14FFFFFF)
     }
+    val borderWidth = when {
+        flash > 0f -> (1f + 3f * flash).dp
+        hovered || legal || hinted -> 2.dp
+        else -> 1.dp
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
+            .scale(1f + 0.05f * flash)
             .clip(RoundedCornerShape(6.dp))
             .background(fill)
-            .border(if (hovered || legal || hinted) 2.dp else 1.dp, edge, RoundedCornerShape(6.dp)),
+            .border(borderWidth, edge, RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.CenterEnd
     ) {
+        if (flash > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Palette.Gold.copy(alpha = 0.55f * flash))
+            )
+        }
         if (locked) {
             Text(
                 text = "K で開放",
@@ -340,8 +388,19 @@ private fun RowBand(
                 modifier = Modifier.padding(end = 10.dp)
             )
         }
+        if (unlock >= 0f) {
+            Text(
+                text = "列 開放",
+                color = Palette.TextMain.copy(alpha = (1f - unlock).coerceIn(0f, 1f)),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 }
+
+private const val PI_F = 3.1415927f
 
 @Composable
 private fun CardFace(

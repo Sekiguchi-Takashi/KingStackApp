@@ -2,7 +2,14 @@
 
 ## 現在地
 
-v1.8。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+v1.9。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+
+### v1.9で変えたこと（演出）
+- キングで列が開放されたときのアニメーション。`BoardView` が `activeSlotCount` の増加を検知し、
+  増えた列（`activeCount - 1`）だけを 1.1 秒かけて3回明滅させ、金の膜をかぶせて 5% 拡大し、
+  「列 開放」の文字をフェードアウトさせる。減衰カーブは `(1 - t) * |sin(3πt)|`。
+- 設定の「アニメーション」を OFF にしている場合は演出をスキップする。
+- 進行度は `Animatable` を `remember` して保持。`RowBand(unlock: Float)` に渡し、-1 は演出なしを表す。
 
 ### v1.8で変えたこと（配布）
 - `build.yml` から `actions/upload-artifact` を削除。Artifacts の無料枠が枯渇するとビルド自体が失敗するため。
