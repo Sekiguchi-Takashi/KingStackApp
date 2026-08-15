@@ -2,7 +2,11 @@
 
 ## 現在地
 
-v1.7。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+v1.8。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+
+### v1.8で変えたこと（配布）
+- `build.yml` から `actions/upload-artifact` を削除。Artifacts の無料枠が枯渇するとビルド自体が失敗するため。
+  build.yml はコンパイルが通るかの確認だけに使い、APK は Release から取る。
 
 ### v1.7で変えたこと（配布）
 - `deploy.sh` を恒久仕様に差し替え。`git pull --rebase origin main` とタグ発行までを1コマンドで完結する。
