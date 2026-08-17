@@ -46,9 +46,11 @@ ui/     Theme, BoardView, GameScreen, Screens
 これが無いと push が rejected になる。この2ファイルと `ci/` は配布ビルドに必要なので削除しない。
 
 タグが打たれると Actions が配布用ビルドを走らせ、Release が作られて自作アプリストアに更新として現れる。
-`.github/workflows/build.yml` は手動実行のみのコンパイル確認用。Artifacts のアップロードは行わない
-（無料枠 0.5GB が枯渇すると "Artifact storage quota has been hit" でビルドごと失敗するため）。
+CI は `release.yml`（タグ起動）のみ。`build.yml` は置かない。
+`actions/upload-artifact` も使わない（Artifacts 枠 0.5GB が枯渇すると全ビルドが落ちるため）。
 APK は Release から配布する。
+
+`deploy.sh` の第2引数に `notag` を渡すと push だけを行い、タグを発行しない。
 
 ## 盤面レイアウト（v1.2）
 

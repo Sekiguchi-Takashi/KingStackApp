@@ -2,7 +2,14 @@
 
 ## 現在地
 
-v1.9。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+v1.10。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+
+### v1.10で変えたこと（納品規約への追従）
+- `deploy.sh` の次タグ算出を GitHub API から `git fetch --tags --force` → `git tag --list 'v*' | sort -V | tail -1` に変更。
+  発行も API ではなく `git tag` → `git push origin タグ名`。API の heads 参照は反映遅延で一つ前のコミットに付くため使わない。
+- 第2引数に `notag` を渡すと push のみで終了する。
+- `build.yml` を削除。CI は `release.yml`（タグ起動）に一本化する。
+- `unzip -o` は端末の旧ファイルを消さないため、`deploy.sh` の先頭に `rm -f .github/workflows/build.yml` を置いてある。
 
 ### v1.9で変えたこと（演出）
 - キングで列が開放されたときのアニメーション。`BoardView` が `activeSlotCount` の増加を検知し、
