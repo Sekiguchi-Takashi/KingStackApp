@@ -2,7 +2,18 @@
 
 ## 現在地
 
-v1.10。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+v1.11。仕様書のPhase 1〜3を実装済み。Phase 4はDaily Challengeのみ着手。
+
+### v1.11で変えたこと（ルール変更）
+- キング開放を2回から**4回**に（`MAX_KING_UNLOCK = 4`, `MAX_SLOTS = 9`）。`DISPLAY_ORDER = [8,7,6,5,0,1,2,3,4]`。
+- **完成列の凍結**: A〜Kが揃った列はカードを取り除かず凍結する（`GameState.frozenSlots`）。
+  凍結列は移動元にも移動先にも配札先にもならない。`Engine.refresh` が凍結を付け、`GameState.usableSlots`
+  （開放済みかつ未凍結）を `Rules` / `BoardAnalyzer` / `HintAI` / `Engine.deal` が共通で参照する。
+- **厳格配札を撤廃**: `Settings.strictDraw` を削除し、山札がある限りいつでも配札できる。
+- 凍結列は帯を沈ませ、カードを 55% の不透明度で描き、「凍結」と表示する。
+
+注意: 4完成 = 52枚 = デッキ全部。凍結でカードが戻らなくなったので、完成列の下に別のカードを
+埋めてしまうとその時点で4完成は不可能になる。バランス調整するならここが効く。
 
 ### v1.10で変えたこと（納品規約への追従）
 - `deploy.sh` の次タグ算出を GitHub API から `git fetch --tags --force` → `git tag --list 'v*' | sort -V | tail -1` に変更。

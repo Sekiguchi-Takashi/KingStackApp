@@ -56,15 +56,19 @@ object Engine {
         return refresh(next)
     }
 
-    /** 配札。DrawAIが候補を評価して重み付きランダムで1組を選ぶ。 */
+    /**
+     * 配札。DrawAIが候補を評価して重み付きランダムで1組を選ぶ。
+     * 凍結した列には配らない。
+     */
     fun deal(state: GameState, bias: Double, rng: Random): GameState {
         if (state.drawPile.isEmpty()) return state
-        val count = minOf(state.activeSlotCount, state.drawPile.size)
-        val chosen = DrawAI.chooseDeal(state, count, bias, rng)
+        val targets = state.usableSlots
+        if (targets.isEmpty()) return state
+        val chosen = DrawAI.chooseDeal(state, targets, bias, rng)
         val ids = chosen.map { it.id }.toSet()
         val slots = state.slots.map { it.toMutableList() }
         for (i in chosen.indices) {
-            slots[i].add(chosen[i])
+            slots[targets[i]].add(chosen[i])
         }
         val next = state.copy(
             slots = slots.map { it.toList() },
@@ -87,19 +91,17 @@ object Engine {
         var completed = state.completedCount
         var combo = state.combo
         var maxCombo = state.maxCombo
+        val frozen = state.frozenSlots.toMutableSet()
 
-        var changed = true
-        while (changed) {
-            changed = false
-            for (i in 0 until state.activeSlotCount) {
-                if (Rules.isCompleted(slots[i])) {
-                    repeat(RUN_LENGTH) { slots[i].removeAt(slots[i].size - 1) }
-                    completed++
-                    combo++
-                    maxCombo = maxOf(maxCombo, combo)
-                    score += SCORE_COMPLETE + combo * 50
-                    changed = true
-                }
+        // A〜Kが揃った列は取り除かずに凍結する。カードはそのまま残り、以後は誰も触れない。
+        for (i in 0 until state.activeSlotCount) {
+            if (frozen.contains(i)) continue
+            if (Rules.isCompleted(slots[i])) {
+                frozen.add(i)
+                completed++
+                combo++
+                maxCombo = maxOf(maxCombo, combo)
+                score += SCORE_COMPLETE + combo * 50
             }
         }
 
@@ -107,6 +109,7 @@ object Engine {
         var active = state.activeSlotCount
         val credited = state.creditedKings.toMutableSet()
         for (i in 0 until state.activeSlotCount) {
+            if (frozen.contains(i)) continue
             val slot = slots[i]
             if (slot.isEmpty()) continue
             // 列の先頭（最下段）または、露出している一番上のカード。
@@ -126,6 +129,7 @@ object Engine {
             slots = slots.map { it.toList() },
             activeSlotCount = active,
             completedCount = completed,
+            frozenSlots = frozen,
             score = score,
             combo = combo,
             maxCombo = maxCombo,

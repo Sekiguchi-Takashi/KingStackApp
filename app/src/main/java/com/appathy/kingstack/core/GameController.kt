@@ -56,12 +56,13 @@ class GameController(
     val stuck: Boolean
         get() = productiveCount == 0
 
-    /** ボタンを押せるか。押した結果を説明したいので厳格モードでも押させる。 */
+    /** 配札はいつでもできる。手詰まりを待つ必要はない。 */
     val canPressDraw: Boolean
-        get() = state.status == GameStatus.PLAYING && state.drawPile.isNotEmpty()
+        get() = state.status == GameStatus.PLAYING && state.drawPile.isNotEmpty() &&
+            state.usableSlots.isNotEmpty()
 
     val canDraw: Boolean
-        get() = canPressDraw && (!settings.strictDraw || stuck)
+        get() = canPressDraw
 
     val canRedraw: Boolean
         get() = settings.redrawEnabled && state.status == GameStatus.PLAYING &&
@@ -116,6 +117,12 @@ class GameController(
 
     fun tapCard(slot: Int, index: Int) {
         if (state.status != GameStatus.PLAYING) return
+        if (state.frozenSlots.contains(slot)) {
+            val current = selection
+            if (current != null) tryMove(current.first, current.second, slot)
+            else lastMessage = "この列は完成して凍結しています"
+            return
+        }
         if (index < 0) {
             tapSlot(slot)
             return
@@ -150,6 +157,7 @@ class GameController(
     fun dragStart(slot: Int, index: Int) {
         if (state.status != GameStatus.PLAYING) return
         hover = null
+        if (state.frozenSlots.contains(slot)) return
         if (index < 0) return
         val column = state.slots.getOrNull(slot) ?: return
         val start = Rules.grabStart(column, index)
@@ -227,10 +235,7 @@ class GameController(
     }
 
     fun drawCards() {
-        if (!canDraw) {
-            if (settings.strictDraw) lastMessage = "まだ前進できる手が" + productiveCount + "つあります"
-            return
-        }
+        if (!canDraw) return
         val before = state
         pushUndo(before)
         preDraw = before

@@ -57,12 +57,13 @@ object Rules {
 
     fun legalMoves(state: GameState): List<Move> {
         val moves = mutableListOf<Move>()
-        for (from in 0 until state.activeSlotCount) {
+        val usable = state.usableSlots
+        for (from in usable) {
             val slot = state.slots[from]
             if (slot.isEmpty()) continue
             for (index in runStartIndices(slot)) {
                 val head = slot[index]
-                for (to in 0 until state.activeSlotCount) {
+                for (to in usable) {
                     if (to == from) continue
                     val dest = state.slots[to]
                     // 列まるごとを空列へ動かすだけの手は意味がないので除外する
@@ -77,12 +78,13 @@ object Rules {
     }
 
     fun legalTargets(state: GameState, from: Int, fromIndex: Int): Set<Int> {
+        if (state.frozenSlots.contains(from)) return emptySet()
         val slot = state.slots.getOrNull(from) ?: return emptySet()
         if (fromIndex !in slot.indices) return emptySet()
         if (!isMovableRun(slot, fromIndex)) return emptySet()
         val head = slot[fromIndex]
         val result = mutableSetOf<Int>()
-        for (to in 0 until state.activeSlotCount) {
+        for (to in state.usableSlots) {
             if (to == from) continue
             val dest = state.slots[to]
             if (dest.isEmpty() && fromIndex == 0) continue

@@ -15,7 +15,6 @@ data class Settings(
     val animation: Boolean = true,
     val cardDesign: Int = 0,
     val leftHanded: Boolean = false,
-    val strictDraw: Boolean = true,
     val redrawEnabled: Boolean = true
 )
 
@@ -56,6 +55,9 @@ class SaveStore(context: Context) {
         val kings = JSONArray()
         for (id in state.creditedKings) kings.put(id)
         root.put("kings", kings)
+        val frozen = JSONArray()
+        for (index in state.frozenSlots) frozen.put(index)
+        root.put("frozen", frozen)
         root.put("active", state.activeSlotCount)
         root.put("completed", state.completedCount)
         root.put("score", state.score)
@@ -91,11 +93,15 @@ class SaveStore(context: Context) {
             val kingsJson = root.getJSONArray("kings")
             val kings = HashSet<Int>()
             for (i in 0 until kingsJson.length()) kings.add(kingsJson.getInt(i))
+            val frozenJson = root.optJSONArray("frozen") ?: JSONArray()
+            val frozen = HashSet<Int>()
+            for (i in 0 until frozenJson.length()) frozen.add(frozenJson.getInt(i))
             GameState(
                 slots = slots,
                 activeSlotCount = root.getInt("active"),
                 drawPile = pile,
                 completedCount = root.getInt("completed"),
+                frozenSlots = frozen,
                 score = root.getInt("score"),
                 combo = root.getInt("combo"),
                 maxCombo = root.getInt("maxCombo"),
@@ -128,7 +134,6 @@ class SaveStore(context: Context) {
         animation = prefs.getBoolean("animation", true),
         cardDesign = prefs.getInt("cardDesign", 0),
         leftHanded = prefs.getBoolean("leftHanded", false),
-        strictDraw = prefs.getBoolean("strictDraw", true),
         redrawEnabled = prefs.getBoolean("redrawEnabled", true)
     )
 
@@ -139,7 +144,6 @@ class SaveStore(context: Context) {
             .putBoolean("animation", settings.animation)
             .putInt("cardDesign", settings.cardDesign)
             .putBoolean("leftHanded", settings.leftHanded)
-            .putBoolean("strictDraw", settings.strictDraw)
             .putBoolean("redrawEnabled", settings.redrawEnabled)
             .apply()
     }

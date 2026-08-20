@@ -29,7 +29,7 @@ object BoardAnalyzer {
         value += moves.size * W_FUTURE_MOVE
 
         var emptySlots = 0
-        for (i in 0 until state.activeSlotCount) {
+        for (i in state.usableSlots) {
             val slot = state.slots[i]
             if (slot.isEmpty()) {
                 emptySlots++
@@ -83,7 +83,7 @@ object BoardAnalyzer {
 
     private fun kingUnlockPotential(state: GameState, emptySlots: Int): Int {
         var value = 0
-        for (i in 0 until state.activeSlotCount) {
+        for (i in state.usableSlots) {
             val slot = state.slots[i]
             val base = slot.firstOrNull() ?: continue
             if (base.rank == RUN_LENGTH) {

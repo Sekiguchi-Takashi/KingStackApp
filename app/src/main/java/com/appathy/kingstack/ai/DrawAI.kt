@@ -13,13 +13,20 @@ object DrawAI {
 
     const val CANDIDATES = 8
 
-    fun chooseDeal(state: GameState, count: Int, bias: Double, rng: Random): List<Card> {
+    fun chooseDeal(
+        state: GameState,
+        targets: List<Int>,
+        bias: Double,
+        rng: Random
+    ): List<Card> {
         val pile = state.drawPile
+        val count = minOf(targets.size, pile.size)
+        if (count == 0) return emptyList()
         if (pile.size <= count) return pile
 
         val scored = (0 until CANDIDATES)
             .map { pile.shuffled(rng).take(count) }
-            .map { it to evaluateDeal(state, it) }
+            .map { it to evaluateDeal(state, targets, it) }
             .sortedByDescending { it.second }
 
         if (rng.nextDouble() < bias) return scored.first().first
@@ -35,10 +42,10 @@ object DrawAI {
         return rest.last().first
     }
 
-    private fun evaluateDeal(state: GameState, cards: List<Card>): Int {
+    private fun evaluateDeal(state: GameState, targets: List<Int>, cards: List<Card>): Int {
         val slots = state.slots.map { it.toMutableList() }
         for (i in cards.indices) {
-            slots[i].add(cards[i])
+            slots[targets[i]].add(cards[i])
         }
         val simulated = state.copy(slots = slots.map { it.toList() })
         return BoardAnalyzer.evaluate(simulated)

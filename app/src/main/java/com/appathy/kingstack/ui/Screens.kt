@@ -147,13 +147,14 @@ private fun StatRow(label: String, value: String) {
 @Composable
 fun RulesScreen(onBack: () -> Unit) {
     ScreenFrame("ルール", onBack) {
-        RuleBlock("目的", "A〜Kの13枚を1列に揃えて退避させる。4セット完成でCLEAR。")
+        RuleBlock("目的", "A〜Kの13枚を1列に揃える。4セット完成でCLEAR。")
         RuleBlock("置き方", "カードは「数字が1つ大きいカード」の上に置けます。空列には何でも置けます。")
         RuleBlock("まとめて移動", "同じスートで連番に並んだカードは、まとめて移動できます。スートが混ざっていると1枚ずつです。")
         RuleBlock("操作", "列は横に伸びます。1枚目が左端で、右へ行くほど新しいカードです。重なって続いているカードに触れると、上の1枚ではなく束の根元から掴みます。束を短くしたいときは、同じ列をもう一度タップするたびに1枚ずつ減ります。")
         RuleBlock("置き方の操作", "選んだまま指を別の列の帯へ動かすと、その列が光ります。カードの上に正確に重ねる必要はなく、帯のどこで指を離してもその列の末尾に置かれます。")
-        RuleBlock("キング", "キングが列の先頭（一番下）に来るか、列の一番上に露出すると、ロックされた列が1つ開放されます。同じキングは1回だけ。5列→6列→7列まで。")
-        RuleBlock("配札", "「カードを配る」で、開放中の全列に1枚ずつ配られます。スコアは-50。")
+        RuleBlock("キング", "キングが列の先頭（一番下）に来るか、列の一番上に露出すると、ロックされた列が1つ開放されます。同じキングは1回だけ。5列から最大9列まで、4回まで開放できます。")
+        RuleBlock("凍結", "A〜Kが揃った列はその場で凍結します。カードは残りますが、以後その列には置けず、配札もされません。開放した列を使い切る前に完成させる順番が鍵になります。")
+        RuleBlock("配札", "「カードを配る」はいつでも押せます。凍結していない開放中の列に1枚ずつ配られます。スコアは-50。")
         RuleBlock("リドロー", "配った直後、まだ1枚もカードを動かしていない場合に限り、1回だけ配り直せます。スコアは-100。")
         RuleBlock("デッドロック", "前進できる手がなく、山札も尽きたらGAME OVERです。空列へ動かすだけの手は前進に数えません。")
         RuleBlock("AI", "配札はランダムではありません。AIが盤面を評価し、難易度に応じた有利さで札を選びます。")
@@ -184,13 +185,6 @@ fun SettingsScreen(controller: GameController, onBack: () -> Unit) {
             color = Palette.TextDim,
             fontSize = 11.sp,
             modifier = Modifier.padding(bottom = 10.dp)
-        )
-        ToggleRow("配札は手詰まり時のみ", settings.strictDraw) { controller.updateSettings(settings.copy(strictDraw = it)) }
-        Text(
-            "ONにすると「前進できる手がないときだけ配札できる」厳格モードになります。カードを置いても隣接が増えない手（空列への移動など）は前進に数えません。",
-            color = Palette.TextDim,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(bottom = 12.dp)
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),

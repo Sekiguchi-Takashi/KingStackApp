@@ -44,7 +44,7 @@ object HintAI {
     }
 
     private fun reasonFor(before: GameState, move: Move, after: GameState): String {
-        if (after.completedCount > before.completedCount) return "A〜Kが完成して列を退避できます"
+        if (after.completedCount > before.completedCount) return "A〜Kが完成して列が確定します"
         if (after.activeSlotCount > before.activeSlotCount) return "キングが先頭に来て新しい列が開放されます"
         val emptyBefore = countEmpty(before)
         val emptyAfter = countEmpty(after)
@@ -58,7 +58,7 @@ object HintAI {
 
     private fun countEmpty(state: GameState): Int {
         var count = 0
-        for (i in 0 until state.activeSlotCount) {
+        for (i in state.usableSlots) {
             if (state.slots[i].isEmpty()) count++
         }
         return count

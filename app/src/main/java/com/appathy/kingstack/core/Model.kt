@@ -1,8 +1,8 @@
 package com.appathy.kingstack.core
 
-const val MAX_SLOTS = 7
+const val MAX_SLOTS = 9
 const val INITIAL_SLOTS = 5
-const val MAX_KING_UNLOCK = 2
+const val MAX_KING_UNLOCK = 4
 const val COMPLETE_TARGET = 4
 const val RUN_LENGTH = 13
 
@@ -46,6 +46,8 @@ data class GameState(
     val activeSlotCount: Int = INITIAL_SLOTS,
     val drawPile: List<Card> = emptyList(),
     val completedCount: Int = 0,
+    /** A〜Kが揃って凍結した列。カードは残るが、以後は移動先にも配札先にもならない。 */
+    val frozenSlots: Set<Int> = emptySet(),
     val score: Int = 0,
     val combo: Int = 0,
     val maxCombo: Int = 0,
@@ -63,6 +65,10 @@ data class GameState(
 ) {
     val cardsOnBoard: Int
         get() = slots.sumOf { it.size }
+
+    /** まだ使える列（開放済みかつ未凍結）。配札先もここ。 */
+    val usableSlots: List<Int>
+        get() = (0 until activeSlotCount).filter { !frozenSlots.contains(it) }
 
     val remainingCards: Int
         get() = cardsOnBoard + drawPile.size

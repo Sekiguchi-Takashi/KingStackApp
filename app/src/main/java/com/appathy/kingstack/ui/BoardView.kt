@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
@@ -66,7 +67,7 @@ private const val OUTSIDE = -1
  * 画面の上から下へ並べる列の順番。
  * ロック中の6列目・7列目を上に置く。開放は下から進むので、ロック帯は常に一番上にまとまる。
  */
-private val DISPLAY_ORDER = listOf(6, 5, 0, 1, 2, 3, 4)
+private val DISPLAY_ORDER = listOf(8, 7, 6, 5, 0, 1, 2, 3, 4)
 
 /**
  * 列は横方向に伸びる帯。1枚目が左端で、右へ行くほど新しい。
@@ -211,6 +212,7 @@ fun BoardView(
             for (position in 0 until MAX_SLOTS) {
                 val row = DISPLAY_ORDER[position]
                 val locked = row >= activeCount
+                val frozen = state.frozenSlots.contains(row)
                 val cards = state.slots[row]
                 val selectedStart =
                     if (selection != null && selection.first == row) selection.second else null
@@ -224,6 +226,7 @@ fun BoardView(
                     RowBand(
                         height = rowHeight,
                         locked = locked,
+                        frozen = frozen,
                         legal = targets.contains(row),
                         hovered = hover == row,
                         hinted = hintTo == row,
@@ -257,6 +260,7 @@ fun BoardView(
                                 hinted = isHinted,
                                 animate = animate,
                                 topOfStack = index == cards.size - 1,
+                                frozen = frozen,
                                 rankSize = rankSize,
                                 suitSize = suitSize
                             )
@@ -320,6 +324,7 @@ private fun CarriedStack(
                 hinted = false,
                 animate = false,
                 topOfStack = index == cards.size - 1,
+                frozen = false,
                 rankSize = rankSize,
                 suitSize = suitSize
             )
@@ -335,6 +340,7 @@ private fun CarriedStack(
 private fun RowBand(
     height: Dp,
     locked: Boolean,
+    frozen: Boolean,
     legal: Boolean,
     hovered: Boolean,
     hinted: Boolean,
@@ -347,6 +353,7 @@ private fun RowBand(
     val fill = when {
         hovered -> Color(0x33E3B84F)
         legal -> Color(0x1AE3B84F)
+        frozen -> Color(0x140A2A1E)
         locked -> Palette.SlotLocked
         else -> Color(0x0AFFFFFF)
     }
@@ -388,6 +395,15 @@ private fun RowBand(
                 modifier = Modifier.padding(end = 10.dp)
             )
         }
+        if (frozen) {
+            Text(
+                text = "凍結",
+                color = Palette.Highlight,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(end = 10.dp)
+            )
+        }
         if (unlock >= 0f) {
             Text(
                 text = "列 開放",
@@ -413,6 +429,7 @@ private fun CardFace(
     hinted: Boolean,
     animate: Boolean,
     topOfStack: Boolean,
+    frozen: Boolean = false,
     rankSize: TextUnit,
     suitSize: TextUnit
 ) {
@@ -425,6 +442,7 @@ private fun CardFace(
     val edge = when {
         selected -> Palette.Gold
         hinted -> Palette.Highlight
+        frozen -> Palette.Highlight
         topOfStack -> Palette.GoldDim
         else -> Palette.cardEdge(design)
     }
@@ -434,6 +452,7 @@ private fun CardFace(
             .width(width)
             .height(height)
             .scale(scale)
+            .alpha(if (frozen) 0.55f else 1f)
             .clip(RoundedCornerShape(6.dp))
             .background(Palette.cardFace(design))
             .border(if (selected || hinted) 2.dp else 1.dp, edge, RoundedCornerShape(6.dp))
