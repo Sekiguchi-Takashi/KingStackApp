@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.appathy.kingstack.BuildConfig
 import com.appathy.kingstack.core.Difficulty
 import com.appathy.kingstack.core.GameController
 
@@ -89,7 +90,14 @@ fun HomeScreen(
             "積んで、開放して、配り直す。",
             color = Palette.TextDim,
             fontSize = 13.sp,
-            modifier = Modifier.padding(top = 8.dp, bottom = 28.dp)
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        // 端末で動いているビルドを確認できるようにする。
+        Text(
+            "v" + BuildConfig.VERSION_NAME + "  キング開放 最大4 / 配札はいつでも可",
+            color = Palette.GoldDim,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
         if (hasSave) MenuButton("つづきから", true, onContinue)
         MenuButton("PLAY GAME", !hasSave, onPlay)
